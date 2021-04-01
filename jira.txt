@@ -1,0 +1,47 @@
+let
+    Results = let
+        Pagination = List.Skip(List.Generate( () => [Table =  #table({}, {{}}) ,Start = 0, Counter=0],
+        each Table.RowCount([Table])>0 or [Counter]=0,
+        each [ Source = Json.Document(Web.Contents("https://jira.int.ally.com/",
+            [
+                RelativePath="rest/api/2/search",
+                    Query=[ jql="project in (AC,CIA) AND Team in (898,1526)",fields="issuetype, timespent, project, fixVersions, customfield_10110, customfield_10111, aggregatetimespent, resolution, customfield_10112, customfield_10113, customfield_10114, customfield_10104, customfield_10105, customfield_10106, customfield_10107, customfield_10108, customfield_10109, resolutiondate, workratio, lastViewed, watches, created, priority, customfield_10100, customfield_10101, customfield_10102, customfield_10103, labels, timeestimate, aggregatetimeoriginalestimate, versions, issuelinks, assignee, updated, status, components, timeoriginalestimate, description, customfield_10006, customfield_10009, aggregatetimeestimate, summary, creator, subtasks, reporter, customfield_10000, aggregateprogress, customfield_10001, customfield_10004, customfield_10115, customfield_10116, customfield_10117, environment, customfield_10118, customfield_10119, duedate, progress, votes, parent, customfield_10005, customfield_10007, customfield_10008, customfield_10002, customfield_10003}, {issuetype, timespent, project, fixVersions, customfield_10110, customfield_10111, aggregatetimespent, resolution, customfield_10112, customfield_10113, customfield_10114, customfield_10104, customfield_10105, customfield_10106, customfield_10107, customfield_10108, customfield_10109, resolutiondate, workratio, lastViewed, watches, created, priority, customfield_10100, customfield_10101, customfield_10102, customfield_10103, labels, timeestimate, aggregatetimeoriginalestimate, versions, issuelinks, assignee, updated, status, components, timeoriginalestimate, description, customfield_10006, customfield_10009, aggregatetimeestimate, summary, creator, subtasks, reporter, customfield_10000, aggregateprogress, customfield_10001, customfield_10004, customfield_10115, customfield_10116, customfield_10117, environment, customfield_10118, customfield_10119, duedate, progress, votes, parent, customfield_10005, customfield_10007, customfield_10008, customfield_10002, customfield_10003", maxResults="1000",
+                    startAt=Number.ToText([Start])
+                ]
+            ])),
+            Start = [Start]+1000,
+            Counter = [Counter]=1,
+            Table = Table.FromRecords(Source[issues])
+            ]
+            ,each [Table]
+        ) ,1),
+        #"Converted to Table" = Table.FromList(Pagination, Splitter.SplitByNothing(), null, null, ExtraValues.Error)
+
+    in 
+    #"Converted to Table",
+    #"Expanded Column1" = Table.ExpandTableColumn(Results, "Column1", {"expand", "id", "self", "key", "fields"}, {"Column1.expand", "Column1.id", "Column1.self", "Column1.key", "Column1.fields"}),
+    #"Expanded Column1.fields1" = Table.ExpandRecordColumn(#"Expanded Column1", "Column1.fields", {"issuetype", "components", "timespent", "timeoriginalestimate", "description", "project", "fixVersions", "aggregatetimespent", "resolution", "customfield_10005", "customfield_10104", "aggregatetimeestimate", "resolutiondate", "workratio", "summary", "lastViewed", "watches", "creator", "subtasks", "created", "reporter", "customfield_10000", "aggregateprogress", "priority", "customfield_10102", "labels", "customfield_10004", "environment", "aggregatetimeoriginalestimate", "timeestimate", "versions", "duedate", "progress", "issuelinks", "votes", "assignee", "updated", "status", "customfield_10107", "customfield_10001", "customfield_10002", "customfield_10003", "parent"}, {"Column1.fields.issuetype", "Column1.fields.components", "Column1.fields.timespent", "Column1.fields.timeoriginalestimate", "Column1.fields.description", "Column1.fields.project", "Column1.fields.fixVersions", "Column1.fields.aggregatetimespent", "Column1.fields.resolution", "Column1.fields.customfield_10005", "Column1.fields.customfield_10104", "Column1.fields.aggregatetimeestimate", "Column1.fields.resolutiondate", "Column1.fields.workratio", "Column1.fields.summary", "Column1.fields.lastViewed", "Column1.fields.watches", "Column1.fields.creator", "Column1.fields.subtasks", "Column1.fields.created", "Column1.fields.reporter", "Column1.fields.customfield_10000", "Column1.fields.aggregateprogress", "Column1.fields.priority", "Column1.fields.customfield_10102", "Column1.fields.labels", "Column1.fields.customfield_10004", "Column1.fields.environment", "Column1.fields.aggregatetimeoriginalestimate", "Column1.fields.timeestimate", "Column1.fields.versions", "Column1.fields.duedate", "Column1.fields.progress", "Column1.fields.issuelinks", "Column1.fields.votes", "Column1.fields.assignee", "Column1.fields.updated", "Column1.fields.status", "Column1.fields.customfield_10107", "Column1.fields.customfield_10001", "Column1.fields.customfield_10002", "Column1.fields.customfield_10003", "Column1.fields.parent"}),
+    #"Expanded Column1.fields.issuetype" = Table.ExpandRecordColumn(#"Expanded Column1.fields1", "Column1.fields.issuetype", {"name"}, {"Column1.fields.issuetype.name"}),
+    #"Expanded Column1.fields.project" = Table.ExpandRecordColumn(#"Expanded Column1.fields.issuetype", "Column1.fields.project", {"name"}, {"Column1.fields.project.name"}),
+    #"Expanded Column1.fields.resolution" = Table.ExpandRecordColumn(#"Expanded Column1.fields.project", "Column1.fields.resolution", {"name"}, {"Column1.fields.resolution.name"}),
+    #"Filtered Rows" = Table.SelectRows(#"Expanded Column1.fields.resolution", each true),
+    #"Expanded Column1.fields.watches" = Table.ExpandRecordColumn(#"Filtered Rows", "Column1.fields.watches", {"isWatching"}, {"Column1.fields.watches.isWatching"}),
+    #"Expanded Column1.fields.creator" = Table.ExpandRecordColumn(#"Expanded Column1.fields.watches", "Column1.fields.creator", {"displayName"}, {"Column1.fields.creator.displayName"}),
+    #"Expanded Column1.fields.reporter" = Table.ExpandRecordColumn(#"Expanded Column1.fields.creator", "Column1.fields.reporter", {"displayName"}, {"Column1.fields.reporter.displayName"}),
+    #"Expanded Column1.fields.priority" = Table.ExpandRecordColumn(#"Expanded Column1.fields.reporter", "Column1.fields.priority", {"name"}, {"Column1.fields.priority.name"}),
+    #"Expanded Column1.fields.status" = Table.ExpandRecordColumn(#"Expanded Column1.fields.priority", "Column1.fields.status", {"name"}, {"Column1.fields.status.name"}),
+    #"Removed Columns" = Table.RemoveColumns(#"Expanded Column1.fields.status",{"Column1.fields.components", "Column1.fields.timeoriginalestimate", "Column1.fields.fixVersions", "Column1.fields.aggregatetimespent", "Column1.fields.customfield_10005", "Column1.fields.aggregatetimeestimate", "Column1.fields.workratio", "Column1.fields.lastViewed", "Column1.fields.subtasks", "Column1.fields.aggregateprogress", "Column1.fields.customfield_10102", "Column1.fields.labels", "Column1.fields.customfield_10004", "Column1.fields.environment", "Column1.fields.aggregatetimeoriginalestimate", "Column1.fields.timeestimate", "Column1.fields.versions", "Column1.fields.progress", "Column1.fields.issuelinks", "Column1.fields.votes", "Column1.fields.customfield_10107", "Column1.fields.customfield_10001", "Column1.fields.customfield_10002", "Column1.fields.customfield_10003", "Column1.fields.parent"}),
+    #"Changed Type" = Table.TransformColumnTypes(#"Removed Columns",{{"Column1.fields.updated", type datetimezone}, {"Column1.fields.created", type datetimezone}, {"Column1.fields.resolutiondate", type datetimezone}}),
+    #"Duplicated Column" = Table.DuplicateColumn(#"Changed Type", "Column1.fields.resolutiondate", "Column1.fields.resolutiondate - Copy"),
+    #"Renamed Columns" = Table.RenameColumns(#"Duplicated Column",{{"Column1.fields.resolutiondate - Copy", "Resolution Date"}}),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Renamed Columns",{{"Resolution Date", type date}}),
+    #"Duplicated Column1" = Table.DuplicateColumn(#"Changed Type1", "Column1.fields.created", "Column1.fields.created - Copy"),
+    #"Renamed Columns1" = Table.RenameColumns(#"Duplicated Column1",{{"Column1.fields.created - Copy", "Created Date"}}),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Renamed Columns1",{{"Created Date", type date}}),
+    #"Added Custom" = Table.AddColumn(#"Changed Type2", "# Of Days", each [Resolution Date]-[Created Date]),
+    #"Changed Type3" = Table.TransformColumnTypes(#"Added Custom",{{"# Of Days", Int64.Type}}),
+    #"Expanded Column1.fields.assignee" = Table.ExpandRecordColumn(#"Changed Type3", "Column1.fields.assignee", {"displayName"}, {"Column1.fields.assignee.displayName"}),
+    #"Changed Type4" = Table.TransformColumnTypes(#"Expanded Column1.fields.assignee",{{"Column1.fields.customfield_10104", Int64.Type}}),
+    #"Renamed Columns2" = Table.RenameColumns(#"Changed Type4",{{"Column1.fields.customfield_10104", "Column1.fields.storypoint"}})
+in
+     #"Renamed Columns2"
