@@ -1,0 +1,175 @@
+---
+title: "Customer Sentiments Analysis Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    runtime: shiny
+    logo: Logo.png
+    storyboard: true
+    social: menu
+    source: embed
+    theme: spacelab
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+require(tidyverse)
+require(httr)
+require(jsonlite)
+require(rlist)
+require(stringr)
+require(sqldf)
+require(ggplot2)
+require(beeswarm)
+require(googleway)
+require(highcharter)
+require(quantmod)
+require(leaflet)
+require(shiny)
+require(bslib)
+require(plotly)
+require(dygraphs)
+require(treemap)
+require(DT)
+require(romato)
+
+df_keys <- read.csv(file = '/Users/Abs/Documents/GitHub/R Sample Codes/R-Codes/keys.csv')
+
+df_yelp <- df_keys[grepl('\\Yelp', df_keys$name),]
+
+df_zomato <- df_keys[grepl('\\Zomato', df_keys$name),]
+
+client_id <- as.character(df_yelp$id)
+client_secret <- as.character(df_yelp$key)
+res <- POST("https://api.yelp.com/oauth2/token",
+            body = list(grant_type = "client_credentials",
+                        client_id = client_id,
+                        client_secret = client_secret))
+
+token <- content(res)$access_token
+
+yelp <- "https://api.yelp.com"
+location <- "Chicago, IL"
+categories <- NULL
+limit <- 50
+radius <- 8800
+term <- "Pizza"
+url <- modify_url(yelp, path = c("v3", "businesses", "search"),
+                  query = list(term = term, location = location, 
+                               limit = limit,
+                               radius = radius))
+res <- GET(url, add_headers('Authorization' = paste("bearer", client_secret)))
+
+results <- content(res)
+
+yelp_httr_parse <- function(x) {
+  
+  parse_list <- list(id = x$id, 
+                     name = x$name, 
+                     rating = x$rating, 
+                     review_count = x$review_count, 
+                     latitude = x$coordinates$latitude, 
+                     longitude = x$coordinates$longitude, 
+                     address1 = x$location$address1, 
+                     city = x$location$city, 
+                     state = x$location$state, 
+                     distance = x$distance)
+  
+  parse_list <- lapply(parse_list, FUN = function(x) ifelse(is.null(x), "", x))
+  
+  df <- tibble(id=parse_list$id,
+                   name=parse_list$name, 
+                   rating = parse_list$rating, 
+                   review_count = parse_list$review_count, 
+                   latitude=parse_list$latitude, 
+                   longitude = parse_list$longitude, 
+                   address1 = parse_list$address1, 
+                   city = parse_list$city, 
+                   state = parse_list$state, 
+                   distance= parse_list$distance)
+  df
+}
+
+results_list <- lapply(results$businesses, FUN = yelp_httr_parse)
+
+business_data <- do.call("rbind", results_list)
+
+
+#write.table(business_data, "/Users/Abs/Documents/GitHub/R Sample Codes/R-Codes/analysis.csv",
+#            append = TRUE,
+#            sep = ",",
+#            col.names = FALSE,
+#            row.names = FALSE,
+#            quote = FALSE)
+
+df_new <- read.csv(file = '/Users/Abs/Documents/GitHub/R Sample Codes/R-Codes/analysis.csv')
+
+my_data <- as_tibble(df_new)
+
+df_good <- my_data %>% filter(rating > 3.5)
+
+zmt <- zomato$new(api_key = as.character(df_zomato$key))
+
+pizza_blr <- zmt$search(query = "Pizza", lat = 12.972442, lon = 77.580643)
+
+pizza_aus <- zmt$search(query = "Pizza", lat = -33.865143, lon = 151.209900)
+```
+
+### Location Markers across Midwest for Domino's Pizza Store featuring Yelp Ratings
+
+```{r}
+leaflet(df_new) %>% 
+addTiles() %>%
+addCircles(lng =df_new$longitude, lat = df_new$latitude, weight = 2,
+             radius = df_new$review_count*5, popup=paste(df_new$name," - ",df_new$address1,",",df_new$city," , rating :",df_new$rating," review : ",df_new$review_count)
+  )
+
+```
+
+*** 
+<p><b>Inference Points :</b></p>
+<p>
+- Ann Arbor have average rating 3.5 across all stores
+- Minneapolis Store has negative sentiments with rating 1.5 with most reviews (94), followed by Indianapolis Store with rating 2 and 60 reviews
+</p>
+\
+&nbsp;
+<p><b>References :</b></p>
+<p>
+- [Yelp API](https://www.yelp.com/developers/documentation/v3)
+- [leaflet visual](http://rstudio.github.io/leaflet/shapes.html)
+</p>
+
+### Overall distribution of customer reviews across different cities in Midwest along with average customer rating
+
+```{r}
+df_annarbor <- df_good[grepl('\\Ann Arbor', df_good$city),]
+hchart(df_annarbor, "scatter", hcaes(x = review_count, y = rating, z = review_count, group = name))
+```
+
+### Overall distribution of customer reviews across different cities in Midwest along with average customer rating
+
+```{r}
+df_detroit <- df_good[grepl('\\Detroit', df_good$city),]
+hchart(df_detroit, "scatter", hcaes(x = review_count, y = rating, z = review_count, group = name))
+```
+
+### Overall distribution of customer reviews across different cities in Midwest along with average customer rating
+
+```{r}
+df_chicago <- df_good[grepl('\\Chicago', df_good$city),]
+hchart(df_chicago, "scatter", hcaes(x = review_count, y = rating, z = review_count, group = name))
+```
+
+### Location Markers across Bangalore for Pizza Delivery Store featuring Zomato Ratings
+
+```{r}
+
+leaflet(pizza_blr) %>% 
+addTiles() %>%
+addCircles(lng =as.numeric(pizza_blr$longitude), lat = as.numeric(pizza_blr$latitude), weight = 2,
+             radius = ~sqrt(as.numeric(pizza_blr$votes))*10, popup=paste(pizza_blr$locality," , rating :",pizza_blr$aggregate_rating," votes : ",pizza_blr$votes)
+  )
+
+```
