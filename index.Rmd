@@ -8,6 +8,7 @@ output:
     social: menu
     source: embed
     theme: spacelab
+    storyboad: true
 ---
 
 ```{r setup, include=FALSE}
